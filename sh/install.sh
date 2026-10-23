@@ -13,6 +13,7 @@ PROXY_SERVICE_NAME=wfproxy
 PROXY_NEXT_SERVICE_NAME=wfproxynext
 TELEGRAF_SERVICE_NAME=telegraf
 OLD_TELEGRAF_SERVICE_NAME=wftelegraf
+OLD_TAP_NAME=wavefronthq/wavefront
 
 function print_usage_and_exit() {
     echo "Failure: $1"
@@ -289,6 +290,22 @@ fi
 check_homebrew_installed
 check_status $? "Homebrew required. Aborting installation."
 
+function remove_old_tap() {
+    # The tap was transferred from wavefrontHQ/homebrew-wavefront to Broadcom/wavefront-homebrew.
+    # If the old tap is still present it also provides wfproxy etc., so brew fails with
+    # "Formulae found in multiple taps". Remove anything installed from it and untap it first.
+    if brew tap | grep -qix "$OLD_TAP_NAME"; then
+        echo "Removing old tap $OLD_TAP_NAME..."
+        # newer Homebrew refuses to load formulae from untrusted third-party taps, even to uninstall them
+        brew trust "$OLD_TAP_NAME" >/dev/null 2>&1 || true
+        uninstall_if_installed $PROXY_SERVICE_NAME
+        uninstall_if_installed $PROXY_NEXT_SERVICE_NAME
+        uninstall_if_installed $OLD_TELEGRAF_SERVICE_NAME
+        brew untap --force "$OLD_TAP_NAME"
+        check_status $? "Error removing the old $OLD_TAP_NAME tap."
+    fi
+}
+
 if [[ -z ${FRIENDLY_HOSTNAME} ]] ; then
     FRIENDLY_HOSTNAME=`hostname`
 fi
@@ -297,11 +314,16 @@ echo "Using hostname: ${FRIENDLY_HOSTNAME}"
 # update homebrew
 brew update
 
+# remove the pre-transfer tap, which would make formula names ambiguous
+remove_old_tap
+
 # install the wavefront Tap
 # Note: the tap repo was transferred+renamed (wavefrontHQ/homebrew-wavefront -> Broadcom/wavefront-homebrew),
 # which breaks brew's default "homebrew-<repo>" naming convention, so the URL must be explicit.
 brew tap broadcom/wavefront https://github.com/Broadcom/wavefront-homebrew
 check_status $? "Error installing the wavefront tap."
+# newer Homebrew refuses to load formulae from untrusted third-party taps
+brew trust broadcom/wavefront >/dev/null 2>&1 || true
 
 # install proxy and/or agent
 if [ -n "$INSTALL_PROXY" ]; then

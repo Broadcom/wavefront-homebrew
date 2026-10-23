@@ -90,6 +90,8 @@ uninstall_cmd wftelegraf
 uninstall_cmd telegraf
 delete_telegraf_files
 brew untap broadcom/wavefront
+# pre-transfer tap name, if still present
+brew tap | grep -qix wavefronthq/wavefront && brew untap --force wavefronthq/wavefront
 
 uninstall_cask_java
 uninstall_homebrew
