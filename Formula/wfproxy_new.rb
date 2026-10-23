@@ -31,8 +31,6 @@ class WfproxyNew < Formula
 
   end
 
-  plist_options :manual => "wfproxy_new"
-
   service do
     log_path var/"log/wavefront-proxy/stdout.log"
     error_log_path var/"log/wavefront-proxy/stderr.log"
